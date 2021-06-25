@@ -1,0 +1,113 @@
+﻿@using Entities
+@using Business
+
+<div class="form-group">
+    <select class="form-control" @onchange="OnChangedWarehouse">
+        <option value="">Seleccione una bodega...</option>
+        @foreach (var warehouse in warehouses)
+        {
+            <option value="@warehouse.WarehouseId">@warehouse.WarehouseName</option>
+        }
+    </select>
+</div>
+<hr />
+<EditForm Model="oInOut">
+    <div class="form-group">
+        <InputSelect class="form-control" @bind-Value="oInOut.StorageId">
+            <option value="">Seleccione un producto...</option>
+            @foreach (var storage in storages)
+            {
+                <option value="@storage.StorageId">@storage.Product.ProductName</option>
+            }
+        </InputSelect>
+    </div>
+    <div class="form-group">
+        <label>Escriba la cantidad</label>
+        <InputNumber class="form-control" @bind-Value="oInOut.Quantity" />
+    </div>
+    <div class="form-group">
+        <label>¿Es una entrada?</label>
+        <InputCheckbox class="form-control" @bind-Value="oInOut.IsInput" />
+    </div>
+    <input type="button" value="@buttonvalue" @onclick="SaveInOut" class="form-control btn btn-dark"/>
+
+</EditForm>
+<div class="text-center" h4>
+    @message
+</div>
+
+
+@code {
+    /**
+    * Se debe crear el objeto con el cual vamos a comenzar a traer los datos para resalizar el ingreso y salida de productos en 
+    * este caso oInOut. Posterior debemos llamar en listas las bodegas actuales
+    */
+    InputOputEntity oInOut = new InputOputEntity();
+    List<WarehouseEntity> warehouses = new List<WarehouseEntity>();
+    List<StorageEntity> storages = new List<StorageEntity>();
+
+    ProductEntity oProduct = new ProductEntity();
+    StorageEntity oStorage = new StorageEntity();
+
+    string message;
+
+    //Validamos si el checkbox esta chequeado mostrara el texto del boton Registrar entrada de lo contrario salida
+    string buttonvalue => oInOut.IsInput ? "Registrar entrada" : "Registrar salida";
+
+    //Creamos un metodo para estraer desde nuestra capa de negocio el listado de las bodegas
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = B_Warehouse.warehouseList();
+    }
+
+    //En este metodo se trae el id de la bodega cada que se realice una selección change en el campo de bodega a la variable local e
+    private void OnChangedWarehouse(ChangeEventArgs e)
+    {
+        var idWarehouse = e.Value.ToString();
+
+        storages = B_Storage.StorageListByWarehouse(idWarehouse);
+    }
+
+    private void SaveInOut()
+    {
+        oStorage = storages.LastOrDefault(s => s.StorageId.ToString() == oInOut.StorageId);
+        oProduct = oStorage.Product;
+
+        if(oInOut.IsInput)
+        {
+            oStorage.PartialQuantity = oStorage.PartialQuantity + oInOut.Quantity;
+            B_Storage.UpdateStorage(oStorage);
+
+            oProduct.TotalQuantity = oProduct.TotalQuantity + oInOut.Quantity;
+            B_Product.UpdateProduct(oProduct);
+
+            message = $"El producto {oProduct.ProductName} ha sido actualizado";
+        }
+        else
+        {
+            if(IsBiggerThanZero(oInOut.Quantity, oStorage.PartialQuantity))
+            {
+                oStorage.PartialQuantity = oStorage.PartialQuantity - oInOut.Quantity;
+                B_Storage.UpdateStorage(oStorage);
+
+                oProduct.TotalQuantity = oProduct.TotalQuantity - oInOut.Quantity;
+                B_Product.UpdateProduct(oProduct);
+
+                message = $"El producto {oProduct.ProductName} ha sido actualizado";
+            }
+            else
+            {
+                message = $"No existe la cantidad suficiente del producto {oProduct.ProductName} para reaizar la salida";
+            }
+        }
+    }
+    private bool IsBiggerThanZero(int quantity, int storageQuantity)
+    {
+        if(storageQuantity > quantity)
+        {
+            return true;
+        }
+        return false;
+    }
+}
+

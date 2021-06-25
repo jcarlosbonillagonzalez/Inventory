@@ -1,0 +1,36 @@
+﻿@using Entities
+@using Business
+
+<table class="table table-bordered table-dark">
+    <thead class="table-dark table-hover">
+        <tr>
+            <th>Ref Bodega</th>
+            <th>Producto</th>
+            <th>Bodega</th>
+            <th>Cantidad</th>
+            <th>Última Actualización</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var storage in storages )
+            {
+                <tr>
+                    <td>@storage.ReferenciaStorage</td>
+                    <td>@storage.Product.ProductName</td>
+                    <td>@storage.Warehouse.WarehouseName</td>
+                    <td>@storage.PartialQuantity</td>
+                    <td>@storage.LastUpdate</td>
+                </tr>
+            }
+    </tbody>
+    
+</table>
+
+@code {
+    List<StorageEntity> storages = new List<StorageEntity>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        storages = B_Storage.StorageList();
+    }
+}
